@@ -59,3 +59,9 @@ class PasswordChange(BaseModel):
 
 class AdminSetPassword(BaseModel):
     new_password: str
+
+class FirstAccessRequest(BaseModel):
+    email: EmailStr
+    cpf: str
+    new_password: str
+    confirm_password: str

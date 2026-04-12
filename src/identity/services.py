@@ -150,3 +150,27 @@ async def admin_set_password(db: AsyncSession, user_id: uuid.UUID, new_password:
     user.hashed_password = get_password_hash(new_password)
     user.password_set = True
     await db.flush()
+
+async def first_access(db: AsyncSession, email: str, cpf: str, new_password: str, confirm_password: str) -> None:
+    if new_password != confirm_password:
+        raise HTTPException(status_code=400, detail="As senhas não conferem")
+
+    stmt = select(User).where(User.email == email)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Dados não encontrados")
+
+    if user.password_set:
+        raise HTTPException(status_code=400, detail="Conta já ativada. Faça login normalmente.")
+
+    from src.academic.models import Student
+    stmt = select(Student).where(Student.user_id == user.id)
+    result = await db.execute(stmt)
+    student = result.scalar_one_or_none()
+    if not student or student.cpf != cpf:
+        raise HTTPException(status_code=400, detail="Dados não conferem")
+
+    user.hashed_password = get_password_hash(new_password)
+    user.password_set = True
+    await db.flush()

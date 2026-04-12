@@ -5,8 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.identity.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest, UserCreateAdmin, UserUpdate, ProfileUpdate, PasswordChange, AdminSetPassword
-from src.identity.services import register_user, authenticate_user, create_user_session, refresh_user_session, revoke_session, get_users, create_user_admin, update_user, delete_user, update_profile, change_password, admin_set_password
+from src.identity.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest, UserCreateAdmin, UserUpdate, ProfileUpdate, PasswordChange, AdminSetPassword, FirstAccessRequest
+from src.identity.services import register_user, authenticate_user, create_user_session, refresh_user_session, revoke_session, get_users, create_user_admin, update_user, delete_user, update_profile, change_password, admin_set_password, first_access
 from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
 
@@ -45,6 +45,15 @@ async def refresh_token(payload: RefreshTokenRequest, db: Annotated[AsyncSession
 async def logout(payload: RefreshTokenRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     await revoke_session(db, payload.refresh_token)
     await db.commit()
+
+@router.post("/first-access")
+async def handle_first_access(
+    payload: FirstAccessRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await first_access(db, payload.email, payload.cpf, payload.new_password, payload.confirm_password)
+    await db.commit()
+    return {"detail": "Senha criada com sucesso"}
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
