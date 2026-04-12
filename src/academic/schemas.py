@@ -23,7 +23,7 @@ class StudentOnboarding(BaseModel):
     birth_date: date = Field(alias="birthDate")
     gender: str
     phone: Optional[str] = None
-    email: Optional[str] = None
+    email: str
     address: Optional[AddressSchema] = None
     # Jiu-Jitsu
     belt_name: str = Field(alias="beltName")

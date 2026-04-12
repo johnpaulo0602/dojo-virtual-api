@@ -5,8 +5,12 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
+import secrets
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
+from src.core.security import get_password_hash
+from src.identity.models import User as UserModel
 from src.academic.models import (
     Student, Guardian, StudentSchoolInfo, StudentHealthProfile, School,
     EmergencyContact, BeltPromotion, InstructorFeedback, StudentContribution, StudentDocument,
@@ -62,11 +66,28 @@ def _generate_matricula() -> str:
 
 
 async def create_student_onboarding(db: AsyncSession, payload: StudentOnboarding) -> Student:
+    # 1. Create User account for the student
+    random_password = secrets.token_urlsafe(32)
+    user = UserModel(
+        email=payload.email,
+        name=payload.name,
+        hashed_password=get_password_hash(random_password),
+        role="aluno",
+    )
+    db.add(user)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    # 2. Create Student linked to the User
     data = payload.model_dump(exclude={"class_group_id"})
     data["matricula"] = _generate_matricula()
+    data["user_id"] = user.id
     student = Student(**data)
     db.add(student)
-    await db.flush()  # assigns student.id
+    await db.flush()
     student_id = student.id
     await db.commit()
     stmt = select(Student).where(Student.id == student_id)

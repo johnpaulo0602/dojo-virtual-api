@@ -13,6 +13,7 @@ async def test_create_student_onboarding(get_db_session: AsyncSession):
         cpf="123456789",
         birthDate=date(2010, 1, 1),
         gender="M",
+        email="johndoe@test.com",
         beltName="branca",
         beltDegree=0,
         startDate=date(2026, 1, 1),

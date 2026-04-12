@@ -8,6 +8,7 @@ def test_student_onboarding_schema_camelcase_alias():
         "cpf": "123.456.789-00",
         "birthDate": "2010-05-15",
         "gender": "Masculino",
+        "email": "johndoe@test.com",
         "beltName": "Branca",
         "beltDegree": 1,
         "startDate": "2026-01-01",

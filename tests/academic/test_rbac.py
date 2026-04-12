@@ -61,7 +61,7 @@ async def test_onboard_student_no_token_returns_401(get_db_session: AsyncSession
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         res = await ac.post("/api/v1/students", json={
             "name": "X", "cpf": "000", "birthDate": "2010-01-01",
-            "gender": "M", "beltName": "branca", "beltDegree": 0, "startDate": "2026-01-01",
+            "gender": "M", "email": "notoken@test.com", "beltName": "branca", "beltDegree": 0, "startDate": "2026-01-01",
         })
     app.dependency_overrides.clear()
     assert res.status_code == 401
@@ -103,7 +103,7 @@ async def test_monitor_cannot_create_student(get_db_session: AsyncSession):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         res = await ac.post("/api/v1/students", json={
             "name": "X", "cpf": "000", "birthDate": "2010-01-01",
-            "gender": "M", "beltName": "branca", "beltDegree": 0, "startDate": "2026-01-01",
+            "gender": "M", "email": "monitor_student@test.com", "beltName": "branca", "beltDegree": 0, "startDate": "2026-01-01",
         }, headers=headers)
     app.dependency_overrides.clear()
     assert res.status_code == 403
@@ -123,7 +123,7 @@ async def test_instrutor_can_create_student(get_db_session: AsyncSession):
         res = await ac.post("/api/v1/students", json={
             "name": "New Student", "cpf": "99988877766",
             "birthDate": "2012-06-15", "gender": "F",
-            "beltName": "branca", "beltDegree": 0, "startDate": "2026-03-01",
+            "email": "newstudent@test.com", "beltName": "branca", "beltDegree": 0, "startDate": "2026-03-01",
         }, headers=headers)
     app.dependency_overrides.clear()
     assert res.status_code == 201

@@ -16,6 +16,7 @@ async def test_create_student_endpoint(get_db_session: AsyncSession, auth_token:
             "birthDate": "2010-05-15",
             "gender": "M",
             "phone": "(11) 99999-0000",
+            "email": "teststudent@test.com",
             "beltName": "branca",
             "beltDegree": 0,
             "startDate": "2026-01-01",
