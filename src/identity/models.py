@@ -15,7 +15,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False, server_default="")
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-    role: Mapped[str] = mapped_column(String, nullable=False) # admin, instrutor, monitor, responsavel
+    role: Mapped[str] = mapped_column(String, nullable=False) # admin, instrutor, monitor, aluno
     phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     belt_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     belt_degree: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
