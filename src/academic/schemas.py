@@ -52,6 +52,13 @@ class StudentUpdate(BaseModel):
     contribution_amount: Optional[Decimal] = None
 
 
+class StudentSelfUpdate(BaseModel):
+    """Fields an aluno can update about themselves."""
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[AddressSchema] = None
+
+
 class StudentResponse(BaseModel):
     id: uuid.UUID
     name: str

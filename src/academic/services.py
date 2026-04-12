@@ -261,3 +261,41 @@ async def delete_document(db: AsyncSession, doc_id: uuid.UUID) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     await db.delete(doc)
     await db.flush()
+
+
+async def get_student_by_user_id(db: AsyncSession, user_id: uuid.UUID) -> Student:
+    stmt = (
+        select(Student)
+        .where(Student.user_id == user_id)
+        .options(
+            selectinload(Student.guardians),
+            selectinload(Student.school_info),
+            selectinload(Student.health_profile),
+            selectinload(Student.emergency_contacts),
+            selectinload(Student.promotions),
+            selectinload(Student.feedbacks),
+            selectinload(Student.contributions),
+            selectinload(Student.documents),
+        )
+    )
+    result = await db.execute(stmt)
+    student = result.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found")
+    return student
+
+
+async def update_student_self(db: AsyncSession, user_id: uuid.UUID, payload) -> Student:
+    student = await get_student_by_user_id(db, user_id)
+    update_data = payload.model_dump(exclude_unset=True)
+    # If email changes, also update the linked User
+    if "email" in update_data and update_data["email"]:
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        if user:
+            user.email = update_data["email"]
+    for field, value in update_data.items():
+        setattr(student, field, value)
+    await db.flush()
+    return student

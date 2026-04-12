@@ -3,7 +3,7 @@ from typing import Annotated, List
 import uuid
 import os
 import shutil
-from fastapi import APIRouter, Depends, status, Path, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, Path, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.identity.dependencies import get_current_user, RequireRole
@@ -12,7 +12,7 @@ from src.identity.models import User
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 from src.academic.schemas import (
-    StudentOnboarding, StudentUpdate, StudentResponse, StudentDetailResponse,
+    StudentOnboarding, StudentUpdate, StudentSelfUpdate, StudentResponse, StudentDetailResponse,
     SchoolResponse, SchoolCreate, SchoolUpdate,
     EmergencyContactCreate, EmergencyContactResponse,
     BeltPromotionCreate, BeltPromotionResponse,
@@ -26,6 +26,7 @@ from src.academic.schemas import (
 from src.academic.services import (
     get_students, get_schools, create_school, update_school, delete_school,
     create_student_onboarding, get_student, update_student,
+    get_student_by_user_id, update_student_self,
     create_guardian, update_guardian, delete_guardian,
     get_emergency_contacts, create_emergency_contact, update_emergency_contact, delete_emergency_contact,
     get_promotions, create_promotion,
@@ -98,13 +99,37 @@ async def onboard_student(
     return await create_student_onboarding(db, payload)
 
 
+# --- Student self-access (aluno role) ---
+
+@router.get("/me", response_model=StudentDetailResponse)
+async def read_my_student(
+    current_user: Annotated[User, Depends(RequireRole(["aluno"]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await get_student_by_user_id(db, current_user.id)
+
+
+@router.patch("/me", response_model=StudentResponse)
+async def update_my_student(
+    payload: StudentSelfUpdate,
+    current_user: Annotated[User, Depends(RequireRole(["aluno"]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    student = await update_student_self(db, current_user.id, payload)
+    await db.commit()
+    return student
+
+
 @router.get("/{student_id}", response_model=StudentDetailResponse)
 async def read_student(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor", "aluno"]))],
 ):
-    return await get_student(db, student_id)
+    student = await get_student(db, student_id)
+    if current_user.role == "aluno" and student.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return student
 
 
 @router.patch("/{student_id}", response_model=StudentResponse)
