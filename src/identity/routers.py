@@ -7,13 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.identity.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest, UserCreateAdmin, UserUpdate, ProfileUpdate, PasswordChange
 from src.identity.services import register_user, authenticate_user, create_user_session, refresh_user_session, revoke_session, get_users, create_user_admin, update_user, delete_user, update_profile, change_password
-from src.identity.dependencies import get_current_user
+from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+async def register(
+    payload: UserCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
+):
     user = await register_user(db, payload)
     await db.commit()
     return user
@@ -73,7 +77,7 @@ users_router = APIRouter(prefix="/api/v1/users", tags=["users"])
 async def list_users(
     role: Annotated[str | None, Query(description="Comma-separated roles")] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))] = None,
 ):
     return await get_users(db, role)
 
@@ -81,7 +85,7 @@ async def list_users(
 async def create_user(
     payload: UserCreateAdmin,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     user = await create_user_admin(db, payload)
     await db.commit()
@@ -92,7 +96,7 @@ async def patch_user(
     user_id: Annotated[uuid.UUID, Path()],
     payload: UserUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     user = await update_user(db, user_id, payload)
     await db.commit()
@@ -102,7 +106,7 @@ async def patch_user(
 async def remove_user(
     user_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     await delete_user(db, user_id)
     await db.commit()
