@@ -6,7 +6,7 @@ import shutil
 from fastapi import APIRouter, Depends, status, Path, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
-from src.identity.dependencies import get_current_user
+from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
@@ -41,12 +41,18 @@ router = APIRouter(prefix="/api/v1/students", tags=["students"])
 # --- Students ---
 
 @router.get("", response_model=List[StudentResponse])
-async def list_students(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_students(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
+):
     return await get_students(db)
 
 
 @router.get("/schools", response_model=List[SchoolResponse])
-async def list_schools(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_schools(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
+):
     return await get_schools(db)
 
 
@@ -54,7 +60,7 @@ async def list_schools(db: Annotated[AsyncSession, Depends(get_db)]):
 async def create_new_school(
     payload: SchoolCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     school = await create_school(db, payload)
     await db.commit()
@@ -66,7 +72,7 @@ async def patch_school(
     school_id: Annotated[uuid.UUID, Path()],
     payload: SchoolUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     school = await update_school(db, school_id, payload)
     await db.commit()
@@ -77,7 +83,7 @@ async def patch_school(
 async def remove_school(
     school_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     await delete_school(db, school_id)
     await db.commit()
@@ -87,6 +93,7 @@ async def remove_school(
 async def onboard_student(
     payload: StudentOnboarding,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     return await create_student_onboarding(db, payload)
 
@@ -95,7 +102,7 @@ async def onboard_student(
 async def read_student(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     return await get_student(db, student_id)
 
@@ -105,7 +112,7 @@ async def patch_student(
     student_id: Annotated[uuid.UUID, Path()],
     payload: StudentUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     student = await update_student(db, student_id, payload)
     await db.commit()
@@ -118,7 +125,7 @@ async def patch_student(
 async def list_guardians(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     stmt = select(Guardian).where(Guardian.student_id == student_id)
     result = await db.execute(stmt)
@@ -130,7 +137,7 @@ async def add_guardian(
     student_id: Annotated[uuid.UUID, Path()],
     payload: GuardianCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     guardian = await create_guardian(db, student_id, payload)
     await db.commit()
@@ -143,7 +150,7 @@ async def patch_guardian(
     guardian_id: Annotated[uuid.UUID, Path()],
     payload: GuardianCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     guardian = await update_guardian(db, guardian_id, payload)
     await db.commit()
@@ -155,7 +162,7 @@ async def remove_guardian(
     student_id: Annotated[uuid.UUID, Path()],
     guardian_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     await delete_guardian(db, guardian_id)
     await db.commit()
@@ -167,7 +174,7 @@ async def remove_guardian(
 async def list_emergency_contacts(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     return await get_emergency_contacts(db, student_id)
 
@@ -177,7 +184,7 @@ async def add_emergency_contact(
     student_id: Annotated[uuid.UUID, Path()],
     payload: EmergencyContactCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     contact = await create_emergency_contact(db, student_id, payload)
     await db.commit()
@@ -190,7 +197,7 @@ async def patch_emergency_contact(
     contact_id: Annotated[uuid.UUID, Path()],
     payload: EmergencyContactCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     contact = await update_emergency_contact(db, contact_id, payload)
     await db.commit()
@@ -202,7 +209,7 @@ async def remove_emergency_contact(
     student_id: Annotated[uuid.UUID, Path()],
     contact_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     await delete_emergency_contact(db, contact_id)
     await db.commit()
@@ -214,7 +221,7 @@ async def remove_emergency_contact(
 async def list_promotions(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     return await get_promotions(db, student_id)
 
@@ -224,7 +231,7 @@ async def add_promotion(
     student_id: Annotated[uuid.UUID, Path()],
     payload: BeltPromotionCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     promo = await create_promotion(db, student_id, payload)
     await db.commit()
@@ -237,7 +244,7 @@ async def add_promotion(
 async def list_feedbacks(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     return await get_feedbacks(db, student_id)
 
@@ -247,7 +254,7 @@ async def add_feedback(
     student_id: Annotated[uuid.UUID, Path()],
     payload: InstructorFeedbackCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     fb = await create_feedback(db, student_id, current_user.id, payload)
     await db.commit()
@@ -260,7 +267,7 @@ async def add_feedback(
 async def list_contributions(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     return await get_contributions(db, student_id)
 
@@ -270,7 +277,7 @@ async def add_contribution(
     student_id: Annotated[uuid.UUID, Path()],
     payload: StudentContributionCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     contrib = await create_contribution(db, student_id, payload)
     await db.commit()
@@ -283,7 +290,7 @@ async def add_contribution(
 async def list_documents(
     student_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     return await get_documents(db, student_id)
 
@@ -293,7 +300,7 @@ async def add_document(
     student_id: Annotated[uuid.UUID, Path()],
     payload: StudentDocumentCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     doc = await create_document(db, student_id, payload)
     await db.commit()
@@ -305,7 +312,7 @@ async def remove_document(
     student_id: Annotated[uuid.UUID, Path()],
     doc_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     await delete_document(db, doc_id)
     await db.commit()
@@ -315,7 +322,7 @@ async def remove_document(
 async def upload_file(
     student_id: Annotated[uuid.UUID, Path()],
     file: UploadFile,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     ext = os.path.splitext(file.filename or "file")[1]
     filename = f"{uuid.uuid4()}{ext}"

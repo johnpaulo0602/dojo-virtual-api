@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 
 @pytest.mark.asyncio
-async def test_create_student_endpoint(get_db_session: AsyncSession):
+async def test_create_student_endpoint(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
     transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
             "name": "Test Student",
@@ -19,7 +20,7 @@ async def test_create_student_endpoint(get_db_session: AsyncSession):
             "beltDegree": 0,
             "startDate": "2026-01-01",
         }
-        response = await ac.post("/api/v1/students", json=payload)
+        response = await ac.post("/api/v1/students", json=payload, headers=headers)
 
     assert response.status_code == 201
     data = response.json()
@@ -34,15 +35,16 @@ async def test_create_student_endpoint(get_db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_academic_endpoints(get_db_session: AsyncSession):
+async def test_get_academic_endpoints(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
     transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        res_students = await ac.get("/api/v1/students")
+        res_students = await ac.get("/api/v1/students", headers=headers)
         assert res_students.status_code == 200
         assert type(res_students.json()) is list
 
-        res_schools = await ac.get("/api/v1/students/schools")
+        res_schools = await ac.get("/api/v1/students/schools", headers=headers)
         assert res_schools.status_code == 200
         assert type(res_schools.json()) is list
 

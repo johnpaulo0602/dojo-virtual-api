@@ -20,7 +20,7 @@ async def test_school_crud(get_db_session: AsyncSession, auth_token: str):
         assert res.json()["name"] == "Escola Nova"
 
         # Verify it appears in list
-        res = await ac.get("/api/v1/students/schools")
+        res = await ac.get("/api/v1/students/schools", headers=headers)
         assert len(res.json()) == 1
 
         # PATCH
@@ -36,7 +36,7 @@ async def test_school_crud(get_db_session: AsyncSession, auth_token: str):
         assert res.status_code == 204
 
         # Verify deleted
-        res = await ac.get("/api/v1/students/schools")
+        res = await ac.get("/api/v1/students/schools", headers=headers)
         assert len(res.json()) == 0
 
     app.dependency_overrides.clear()
