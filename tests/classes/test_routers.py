@@ -8,9 +8,9 @@ from src.classes.models import ClassGroup, ClassSchedule, Lesson
 from datetime import date, time
 
 @pytest.mark.asyncio
-async def test_generate_lessons_endpoint(get_db_session: AsyncSession):
+async def test_generate_lessons_endpoint(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
-    
+
     # Setup dummy group directly
     group = ClassGroup(
         name="Test API", instructor_id=uuid.uuid4(), instructor_name="Z",
@@ -24,22 +24,23 @@ async def test_generate_lessons_endpoint(get_db_session: AsyncSession):
         res = await ac.post(f"/api/v1/class-groups/{group.id}/lessons/generate", json={
             "startDate": "2026-04-01",
             "endDate": "2026-04-30"
-        })
-    
+        }, headers={"Authorization": f"Bearer {auth_token}"})
+
     app.dependency_overrides.clear()
     assert res.status_code == 201
     assert type(res.json()) is list
 
 @pytest.mark.asyncio
-async def test_get_classes_endpoints(get_db_session: AsyncSession):
+async def test_get_classes_endpoints(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
     transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        res_groups = await ac.get("/api/v1/class-groups")
+        res_groups = await ac.get("/api/v1/class-groups", headers=headers)
         assert res_groups.status_code == 200
         assert type(res_groups.json()) is list
 
-        res_lessons = await ac.get("/api/v1/class-groups/lessons")
+        res_lessons = await ac.get("/api/v1/class-groups/lessons", headers=headers)
         assert res_lessons.status_code == 200
         assert type(res_lessons.json()) is list
 

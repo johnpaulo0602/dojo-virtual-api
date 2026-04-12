@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, status, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
-from src.identity.dependencies import get_current_user
+from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
 from src.classes.schemas import (
     ClassGroupCreate, ClassGroupResponse, ClassGroupUpdate, ClassGroupDetailResponse,
@@ -22,12 +22,18 @@ router = APIRouter(prefix="/api/v1/class-groups", tags=["classes"])
 
 # 1. GET / — list groups
 @router.get("", response_model=List[ClassGroupResponse])
-async def list_class_groups(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_class_groups(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
+):
     return await get_class_groups(db)
 
 # 2. GET /lessons — list all lessons
 @router.get("/lessons", response_model=List[LessonResponse])
-async def list_lessons(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_lessons(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
+):
     return await get_lessons(db)
 
 # 3. GET /lessons/{lesson_id}/attendance — list attendance for a lesson
@@ -35,7 +41,7 @@ async def list_lessons(db: Annotated[AsyncSession, Depends(get_db)]):
 async def read_lesson_attendance(
     lesson_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     return await get_lesson_attendance(db, lesson_id)
 
@@ -45,7 +51,7 @@ async def save_lesson_attendance(
     lesson_id: Annotated[uuid.UUID, Path()],
     payload: AttendanceBatchUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     records = [{"student_id": r.student_id, "present": r.present} for r in payload.records]
     result = await batch_save_attendance(db, lesson_id, records)
@@ -57,7 +63,7 @@ async def save_lesson_attendance(
 async def read_lesson(
     lesson_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     lesson = await get_lesson(db, lesson_id)
     attendance_data = []
@@ -78,12 +84,21 @@ async def read_lesson(
 
 # 4. POST / — create group
 @router.post("", response_model=ClassGroupResponse, status_code=status.HTTP_201_CREATED)
-async def create_group(payload: ClassGroupCreate, db: AsyncSession = Depends(get_db)):
+async def create_group(
+    payload: ClassGroupCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
+):
     return await create_class_group(db, payload)
 
 # 6. POST /{group_id}/lessons/generate — generate lessons
 @router.post("/{group_id}/lessons/generate", response_model=List[LessonResponse], status_code=status.HTTP_201_CREATED)
-async def generate_group_lessons(group_id: uuid.UUID, payload: LessonGenerateRequest, db: AsyncSession = Depends(get_db)):
+async def generate_group_lessons(
+    group_id: uuid.UUID,
+    payload: LessonGenerateRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
+):
     lessons = await generate_lessons(db, group_id, payload)
     return lessons
 
@@ -93,7 +108,7 @@ async def patch_attendance(
     record_id: Annotated[uuid.UUID, Path()],
     payload: AttendanceUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     record = await toggle_attendance(db, record_id, payload.present)
     await db.commit()
@@ -111,7 +126,7 @@ async def patch_attendance(
 async def read_class_group(
     group_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor", "monitor"]))],
 ):
     group = await get_class_group(db, group_id)
     return {
@@ -127,7 +142,7 @@ async def patch_class_group(
     group_id: Annotated[uuid.UUID, Path()],
     payload: ClassGroupUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     group = await update_class_group(db, group_id, payload)
     await db.commit()
@@ -138,7 +153,7 @@ async def patch_class_group(
 async def remove_class_group(
     group_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(RequireRole(["admin", "instrutor"]))],
 ):
     await delete_class_group(db, group_id)
     await db.commit()
