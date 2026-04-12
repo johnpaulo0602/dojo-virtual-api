@@ -148,4 +148,5 @@ async def change_password(db: AsyncSession, user: User, current_password: str, n
 async def admin_set_password(db: AsyncSession, user_id: uuid.UUID, new_password: str) -> None:
     user = await get_user(db, user_id)
     user.hashed_password = get_password_hash(new_password)
+    user.password_set = True
     await db.flush()

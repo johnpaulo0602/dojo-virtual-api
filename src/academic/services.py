@@ -73,6 +73,7 @@ async def create_student_onboarding(db: AsyncSession, payload: StudentOnboarding
         name=payload.name,
         hashed_password=get_password_hash(random_password),
         role="aluno",
+        password_set=False,
     )
     db.add(user)
     try:

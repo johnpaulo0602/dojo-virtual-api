@@ -32,6 +32,7 @@ async def test_create_student_creates_user(get_db_session: AsyncSession, auth_to
         user = result.scalar_one_or_none()
         assert user is not None
         assert user.role == "aluno"
+        assert user.password_set is False
         assert user.name == "Lucas Silva"
     app.dependency_overrides.clear()
 
