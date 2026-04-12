@@ -16,6 +16,5 @@ venv.bak/
 .pytest_cache/
 
 # uv
-uv.lock
 
 uploads/
