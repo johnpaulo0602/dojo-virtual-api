@@ -36,6 +36,7 @@ class Student(Base):
     start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     contributes: Mapped[bool] = mapped_column(Boolean, default=False)
     contribution_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     guardians: Mapped[List["Guardian"]] = relationship(back_populates="student", cascade="all, delete-orphan")
     school_info: Mapped[Optional["StudentSchoolInfo"]] = relationship(back_populates="student", uselist=False, cascade="all, delete-orphan")
