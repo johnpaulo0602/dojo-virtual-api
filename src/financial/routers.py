@@ -14,26 +14,36 @@ from src.financial.services import (
     update_financial_transaction, delete_financial_transaction,
     create_donor, get_donor, update_donor, delete_donor,
 )
-from src.identity.dependencies import get_current_user
+from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
+
+_admin_only = RequireRole(["admin"])
 
 router = APIRouter(prefix="/api/v1", tags=["financial"])
 
 @router.post("/donors/{donor_id}/donations", response_model=DonationResponse, status_code=status.HTTP_201_CREATED)
-async def make_donation(donor_id: uuid.UUID, payload: DonationCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+async def make_donation(
+    donor_id: uuid.UUID,
+    payload: DonationCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(_admin_only)],
+):
     donation = await create_donation(db, donor_id, payload)
     await db.commit()
     return donation
 
 @router.get("/financial-transactions", response_model=List[FinancialTransactionResponse])
-async def list_transactions(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_transactions(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(_admin_only)],
+):
     return await get_financial_transactions(db)
 
 @router.post("/financial-transactions", response_model=FinancialTransactionResponse, status_code=status.HTTP_201_CREATED)
 async def create_transaction(
     payload: FinancialTransactionCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     tx = await create_financial_transaction(db, payload)
     await db.commit()
@@ -43,7 +53,7 @@ async def create_transaction(
 async def read_transaction(
     tx_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     return await get_financial_transaction(db, tx_id)
 
@@ -52,7 +62,7 @@ async def patch_transaction(
     tx_id: Annotated[uuid.UUID, Path()],
     payload: FinancialTransactionUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     tx = await update_financial_transaction(db, tx_id, payload)
     await db.commit()
@@ -62,20 +72,23 @@ async def patch_transaction(
 async def remove_transaction(
     tx_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     await delete_financial_transaction(db, tx_id)
     await db.commit()
 
 @router.get("/donors", response_model=List[DonorResponse])
-async def list_donors(db: Annotated[AsyncSession, Depends(get_db)]):
+async def list_donors(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(_admin_only)],
+):
     return await get_donors(db)
 
 @router.post("/donors", response_model=DonorResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_donor(
     payload: DonorCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     donor = await create_donor(db, payload)
     await db.commit()
@@ -85,7 +98,7 @@ async def create_new_donor(
 async def read_donor(
     donor_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     from decimal import Decimal as _Decimal
     donor = await get_donor(db, donor_id)
@@ -110,7 +123,7 @@ async def patch_donor(
     donor_id: Annotated[uuid.UUID, Path()],
     payload: DonorUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     donor = await update_donor(db, donor_id, payload)
     await db.commit()
@@ -120,7 +133,7 @@ async def patch_donor(
 async def remove_donor(
     donor_id: Annotated[uuid.UUID, Path()],
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(_admin_only)],
 ):
     await delete_donor(db, donor_id)
     await db.commit()

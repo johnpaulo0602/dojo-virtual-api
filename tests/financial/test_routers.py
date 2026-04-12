@@ -7,17 +7,15 @@ from src.core.database import get_db
 from src.financial.models import Donor
 
 @pytest.mark.asyncio
-async def test_donation_endpoint(get_db_session: AsyncSession):
+async def test_donation_endpoint(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
-    
+
     donor = Donor(name="Test", email="test@test.com", phone="123", type="pessoa_fisica", document="123")
     get_db_session.add(donor)
     await get_db_session.flush()
-    # Note: we need to commit so the test client request running in another transaction can see the donor
-    # Actually, the ASGITransport will run in the same process, but since get_db is overridden to return get_db_session,
-    # it WILL share the same uncommitted transaction! Thus flush is enough.
-    
+
     transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
             "amount": 250.00,
@@ -25,8 +23,8 @@ async def test_donation_endpoint(get_db_session: AsyncSession):
             "method": "pix",
             "description": "Monthly contribution"
         }
-        res = await ac.post(f"/api/v1/donors/{donor.id}/donations", json=payload)
-    
+        res = await ac.post(f"/api/v1/donors/{donor.id}/donations", json=payload, headers=headers)
+
     app.dependency_overrides.clear()
     assert res.status_code == 201
     data = res.json()
@@ -35,16 +33,17 @@ async def test_donation_endpoint(get_db_session: AsyncSession):
     assert "transactionId" in data
 
 @pytest.mark.asyncio
-async def test_get_financial_endpoints(get_db_session: AsyncSession):
+async def test_get_financial_endpoints(get_db_session: AsyncSession, auth_token: str):
     app.dependency_overrides[get_db] = lambda: get_db_session
     transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {auth_token}"}
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        res_transactions = await ac.get("/api/v1/financial-transactions")
+        res_transactions = await ac.get("/api/v1/financial-transactions", headers=headers)
         assert res_transactions.status_code == 200
         assert type(res_transactions.json()) is list
-        
-        res_donors = await ac.get("/api/v1/donors")
+
+        res_donors = await ac.get("/api/v1/donors", headers=headers)
         assert res_donors.status_code == 200
         assert type(res_donors.json()) is list
-    
+
     app.dependency_overrides.clear()
