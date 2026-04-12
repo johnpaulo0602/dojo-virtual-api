@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -91,3 +92,55 @@ async def get_users(db: AsyncSession, role: str | None = None) -> list[User]:
         stmt = stmt.where(User.role.in_(roles))
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+async def create_user_admin(db: AsyncSession, payload) -> User:
+    password = payload.password or "changeme"
+    user = User(
+        email=payload.email,
+        name=payload.name,
+        hashed_password=get_password_hash(password),
+        role=payload.role,
+        phone=payload.phone,
+        belt_name=payload.belt_name,
+        belt_degree=payload.belt_degree,
+        specialties=payload.specialties,
+    )
+    db.add(user)
+    try:
+        await db.flush()
+        return user
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User:
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
+
+async def update_user(db: AsyncSession, user_id: uuid.UUID, payload) -> User:
+    user = await get_user(db, user_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    await db.flush()
+    return user
+
+async def delete_user(db: AsyncSession, user_id: uuid.UUID) -> None:
+    user = await get_user(db, user_id)
+    await db.delete(user)
+    await db.flush()
+
+async def update_profile(db: AsyncSession, user: User, payload) -> User:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    await db.flush()
+    return user
+
+async def change_password(db: AsyncSession, user: User, current_password: str, new_password: str) -> None:
+    if not verify_password(current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.hashed_password = get_password_hash(new_password)
+    await db.flush()

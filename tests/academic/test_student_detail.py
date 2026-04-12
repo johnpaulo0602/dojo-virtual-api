@@ -32,7 +32,6 @@ async def test_get_student_detail(get_db_session: AsyncSession, auth_token: str)
     )
     health = StudentHealthProfile(
         student_id=student.id, blood_type="O+",
-        emergency_contact="Maria", emergency_phone="11999999999",
     )
     get_db_session.add_all([guardian, school_info, health])
     await get_db_session.flush()
@@ -52,6 +51,11 @@ async def test_get_student_detail(get_db_session: AsyncSession, auth_token: str)
     assert data["guardians"][0]["name"] == "Maria Silva"
     assert data["school_info"]["school_level"] == "fundamental"
     assert data["health_profile"]["blood_type"] == "O+"
+    # New relation arrays should be present and empty
+    assert data["emergency_contacts"] == []
+    assert data["promotions"] == []
+    assert data["contributions"] == []
+    assert data["documents"] == []
 
 
 @pytest.mark.asyncio

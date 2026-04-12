@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.identity.dependencies import get_current_user
 from src.identity.models import User
-from src.config.schemas import CategoriesPayload
-from src.config.services import get_categories, save_categories
+from src.config.schemas import CategoriesPayload, UserPreferences, OrganizationSettings
+from src.config.services import get_categories, save_categories, get_user_prefs, save_user_prefs, get_organization, save_organization
 
 router = APIRouter(prefix="/api/v1/config", tags=["config"])
 
@@ -26,3 +26,37 @@ async def replace_categories(
     cats = await save_categories(db, [c.model_dump() for c in payload.categories])
     await db.commit()
     return {"categories": cats}
+
+@router.get("/user_prefs", response_model=UserPreferences)
+async def read_user_prefs(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return await get_user_prefs(db, str(current_user.id))
+
+@router.put("/user_prefs", response_model=UserPreferences)
+async def replace_user_prefs(
+    payload: UserPreferences,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    prefs = await save_user_prefs(db, str(current_user.id), payload.model_dump())
+    await db.commit()
+    return prefs
+
+@router.get("/organization", response_model=OrganizationSettings)
+async def read_organization(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return await get_organization(db)
+
+@router.put("/organization", response_model=OrganizationSettings)
+async def replace_organization(
+    payload: OrganizationSettings,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    settings = await save_organization(db, payload.model_dump())
+    await db.commit()
+    return settings

@@ -1,35 +1,36 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from src.main import app
-from src.academic.models import School
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 
 @pytest.mark.asyncio
 async def test_create_student_endpoint(get_db_session: AsyncSession):
     app.dependency_overrides[get_db] = lambda: get_db_session
-    # Setup dummy school
-    school = School(name="Endpoint School", address="Endpoint Addr")
-    get_db_session.add(school)
-    await get_db_session.flush()
-
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
-            "name": "Jane Doe",
-            "cpf": "111222333",
-            "matricula": "MAT2",
-            "birthDate": "2015-05-10",
-            "gender": "F",
-            "beltName": "Grey",
-            "beltDegree": 1,
-            "schoolInfo": {"schoolId": str(school.id)}
+            "name": "Test Student",
+            "cpf": "12345678901",
+            "birthDate": "2010-05-15",
+            "gender": "M",
+            "phone": "(11) 99999-0000",
+            "beltName": "branca",
+            "beltDegree": 0,
+            "startDate": "2026-01-01",
         }
         response = await ac.post("/api/v1/students", json=payload)
-    
+
     assert response.status_code == 201
-    assert "id" in response.json()
-    assert response.json()["name"] == "Jane Doe"
+    data = response.json()
+    assert "id" in data
+    assert data["name"] == "Test Student"
+    assert data["belt_name"] == "branca"
+    assert data["gender"] == "M"
+    assert data["birth_date"] == "2010-05-15"
+    assert data["status"] == "ativo"
+
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -40,9 +41,9 @@ async def test_get_academic_endpoints(get_db_session: AsyncSession):
         res_students = await ac.get("/api/v1/students")
         assert res_students.status_code == 200
         assert type(res_students.json()) is list
-        
+
         res_schools = await ac.get("/api/v1/students/schools")
         assert res_schools.status_code == 200
         assert type(res_schools.json()) is list
-    
+
     app.dependency_overrides.clear()

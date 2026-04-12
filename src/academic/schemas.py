@@ -1,7 +1,10 @@
+# api/src/academic/schemas.py
 import uuid
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class AddressSchema(BaseModel):
     cep: str
@@ -12,78 +15,90 @@ class AddressSchema(BaseModel):
     city: str
     state: str
 
-class GuardianCreate(BaseModel):
-    name: str
-    cpf: str
-    relationship_type: str = Field(alias="relationship")
-    phone: str
-    email: Optional[str] = None
-    profession: Optional[str] = None
-    is_primary: bool = Field(alias="isPrimary", default=False)
-
-    model_config = ConfigDict(populate_by_name=True)
-
-class SchoolInfoCreate(BaseModel):
-    school_id: uuid.UUID = Field(alias="schoolId")
-    school_level: Optional[str] = Field(alias="schoolLevel", default=None)
-    school_year: Optional[str] = Field(alias="schoolYear", default=None)
-    school_shift: Optional[str] = Field(alias="schoolShift", default=None)
-
-    model_config = ConfigDict(populate_by_name=True)
-
-class HealthProfileCreate(BaseModel):
-    allergies: Optional[str] = None
-    medications: Optional[str] = None
-    conditions: Optional[str] = None
-    blood_type: Optional[str] = Field(alias="bloodType", default=None)
-    emergency_contact: Optional[str] = Field(alias="emergencyContact", default=None)
-    emergency_phone: Optional[str] = Field(alias="emergencyPhone", default=None)
-    observations: Optional[str] = None
-
-    model_config = ConfigDict(populate_by_name=True)
 
 class StudentOnboarding(BaseModel):
+    """Simplified wizard: personal data + address + jiu-jitsu only."""
     name: str
     cpf: str
-    rg: Optional[str] = None
-    matricula: str
     birth_date: date = Field(alias="birthDate")
     gender: str
-    email: Optional[str] = None
     phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[AddressSchema] = None
+    # Jiu-Jitsu
     belt_name: str = Field(alias="beltName")
     belt_degree: int = Field(alias="beltDegree", default=0)
-    status: str = "ativo"
-    address: Optional[AddressSchema] = None
-    
-    guardians: List[GuardianCreate] = []
-    school_info: Optional[SchoolInfoCreate] = Field(alias="schoolInfo", default=None)
-    health: Optional[HealthProfileCreate] = None
+    start_date: Optional[date] = Field(alias="startDate", default=None)
+    class_group_id: Optional[uuid.UUID] = Field(alias="classGroupId", default=None)
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class StudentUpdate(BaseModel):
+    name: Optional[str] = None
+    cpf: Optional[str] = None
+    rg: Optional[str] = None
+    birth_date: Optional[date] = None
+    gender: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[AddressSchema] = None
+    belt_name: Optional[str] = None
+    belt_degree: Optional[int] = None
+    status: Optional[str] = None
+    profession: Optional[str] = None
+    start_date: Optional[date] = None
+    contributes: Optional[bool] = None
+    contribution_amount: Optional[Decimal] = None
+
 
 class StudentResponse(BaseModel):
     id: uuid.UUID
     name: str
     cpf: str
     matricula: str
-    
+    birth_date: date
+    gender: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    belt_name: str
+    belt_degree: int
+    status: str
+    profession: Optional[str] = None
+    start_date: Optional[date] = None
+    contributes: bool = False
+    contribution_amount: Optional[Decimal] = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class SchoolResponse(BaseModel):
     id: uuid.UUID
     name: str
     address: str
-
     model_config = ConfigDict(from_attributes=True)
+
 
 class SchoolCreate(BaseModel):
     name: str
     address: str
 
+
 class SchoolUpdate(BaseModel):
-    name: str | None = None
-    address: str | None = None
+    name: Optional[str] = None
+    address: Optional[str] = None
+
+
+# Guardian schemas
+class GuardianCreate(BaseModel):
+    name: str
+    cpf: str
+    relationship_type: str = Field(alias="relationshipType")
+    phone: str
+    email: Optional[str] = None
+    profession: Optional[str] = None
+    is_primary: bool = Field(alias="isPrimary", default=False)
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class GuardianResponse(BaseModel):
     id: uuid.UUID
@@ -91,44 +106,150 @@ class GuardianResponse(BaseModel):
     cpf: str
     relationship_type: str
     phone: str
-    email: str | None = None
-    profession: str | None = None
+    email: Optional[str] = None
+    profession: Optional[str] = None
     is_primary: bool
     model_config = ConfigDict(from_attributes=True)
+
+
+# SchoolInfo schemas
+class SchoolInfoCreate(BaseModel):
+    school_id: uuid.UUID = Field(alias="schoolId")
+    is_student: bool = Field(alias="isStudent", default=True)
+    school_level: Optional[str] = Field(alias="schoolLevel", default=None)
+    school_year: Optional[str] = Field(alias="schoolYear", default=None)
+    school_shift: Optional[str] = Field(alias="schoolShift", default=None)
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class SchoolInfoResponse(BaseModel):
     id: uuid.UUID
     school_id: uuid.UUID
-    school_level: str | None = None
-    school_year: str | None = None
-    school_shift: str | None = None
+    is_student: bool
+    school_level: Optional[str] = None
+    school_year: Optional[str] = None
+    school_shift: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+# HealthProfile schemas
+class HealthProfileCreate(BaseModel):
+    allergies: Optional[str] = None
+    medications: Optional[str] = None
+    conditions: Optional[str] = None
+    blood_type: Optional[str] = Field(alias="bloodType", default=None)
+    observations: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class HealthProfileResponse(BaseModel):
     id: uuid.UUID
-    allergies: str | None = None
-    medications: str | None = None
-    conditions: str | None = None
-    blood_type: str | None = None
-    emergency_contact: str | None = None
-    emergency_phone: str | None = None
-    observations: str | None = None
+    allergies: Optional[str] = None
+    medications: Optional[str] = None
+    conditions: Optional[str] = None
+    blood_type: Optional[str] = None
+    observations: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
-class StudentDetailResponse(BaseModel):
+
+# EmergencyContact schemas
+class EmergencyContactCreate(BaseModel):
+    name: str
+    phone: str
+    relationship_type: str = Field(alias="relationshipType")
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EmergencyContactResponse(BaseModel):
     id: uuid.UUID
     name: str
-    cpf: str
-    rg: str | None = None
-    matricula: str
-    birth_date: date
-    gender: str
-    email: str | None = None
-    phone: str | None = None
-    belt_name: str
-    belt_degree: int
-    status: str
-    guardians: list[GuardianResponse]
-    school_info: SchoolInfoResponse | None = None
-    health_profile: HealthProfileResponse | None = None
+    phone: str
+    relationship_type: str
     model_config = ConfigDict(from_attributes=True)
+
+
+# BeltPromotion schemas
+class BeltPromotionCreate(BaseModel):
+    previous_belt: str = Field(alias="previousBelt")
+    previous_degree: int = Field(alias="previousDegree")
+    new_belt: str = Field(alias="newBelt")
+    new_degree: int = Field(alias="newDegree")
+    promoted_by: str = Field(alias="promotedBy")
+    date: date
+    notes: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class BeltPromotionResponse(BaseModel):
+    id: uuid.UUID
+    previous_belt: str
+    previous_degree: int
+    new_belt: str
+    new_degree: int
+    promoted_by: str
+    date: date
+    notes: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+# InstructorFeedback schemas
+class InstructorFeedbackCreate(BaseModel):
+    text: str
+    date: date
+
+
+class InstructorFeedbackResponse(BaseModel):
+    id: uuid.UUID
+    author_id: uuid.UUID
+    text: str
+    date: date
+    model_config = ConfigDict(from_attributes=True)
+
+
+# StudentContribution schemas
+class StudentContributionCreate(BaseModel):
+    reference: str
+    amount: Decimal
+    date: date
+    method: str
+    receipt_url: Optional[str] = Field(alias="receiptUrl", default=None)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StudentContributionResponse(BaseModel):
+    id: uuid.UUID
+    reference: str
+    amount: Decimal
+    date: date
+    method: str
+    receipt_url: Optional[str] = None
+    status: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+# StudentDocument schemas
+class StudentDocumentCreate(BaseModel):
+    type: str
+    file_url: str = Field(alias="fileUrl")
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StudentDocumentResponse(BaseModel):
+    id: uuid.UUID
+    type: str
+    file_url: str
+    uploaded_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Full detail response
+class StudentDetailResponse(StudentResponse):
+    rg: Optional[str] = None
+    address: Optional[dict] = None
+    guardians: List[GuardianResponse] = []
+    school_info: Optional[SchoolInfoResponse] = None
+    health_profile: Optional[HealthProfileResponse] = None
+    emergency_contacts: List[EmergencyContactResponse] = []
+    promotions: List[BeltPromotionResponse] = []
+    contributions: List[StudentContributionResponse] = []
+    documents: List[StudentDocumentResponse] = []

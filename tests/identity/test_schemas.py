@@ -20,6 +20,11 @@ def test_user_response_from_attributes():
             self.email = "test@example.com"
             self.name = "Test User"
             self.role = "user"
+            self.phone = None
+            self.belt_name = None
+            self.belt_degree = None
+            self.specialties = None
+            self.status = "ativo"
             
     mock_user = MockUser()
     user_response = UserResponse.model_validate(mock_user)

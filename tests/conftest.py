@@ -6,6 +6,12 @@ from src.core.config import settings
 from src.identity.models import User
 from src.core.security import get_password_hash, create_access_token
 
+# Import all models so Base.metadata knows about every table (needed for drop_all/create_all ordering)
+import src.academic.models  # noqa: F401
+import src.classes.models  # noqa: F401
+import src.financial.models  # noqa: F401
+import src.config.models  # noqa: F401
+
 # Use a test database URL or rely on transactions
 # For simplicity, we create tables and yield session
 
