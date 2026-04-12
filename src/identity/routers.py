@@ -5,8 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.identity.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest, UserCreateAdmin, UserUpdate, ProfileUpdate, PasswordChange
-from src.identity.services import register_user, authenticate_user, create_user_session, refresh_user_session, revoke_session, get_users, create_user_admin, update_user, delete_user, update_profile, change_password
+from src.identity.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest, UserCreateAdmin, UserUpdate, ProfileUpdate, PasswordChange, AdminSetPassword
+from src.identity.services import register_user, authenticate_user, create_user_session, refresh_user_session, revoke_session, get_users, create_user_admin, update_user, delete_user, update_profile, change_password, admin_set_password
 from src.identity.dependencies import get_current_user, RequireRole
 from src.identity.models import User
 
@@ -109,4 +109,14 @@ async def remove_user(
     current_user: Annotated[User, Depends(RequireRole(["admin"]))],
 ):
     await delete_user(db, user_id)
+    await db.commit()
+
+@users_router.put("/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
+async def set_user_password(
+    user_id: Annotated[uuid.UUID, Path()],
+    payload: AdminSetPassword,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(RequireRole(["admin"]))],
+):
+    await admin_set_password(db, user_id, payload.new_password)
     await db.commit()
